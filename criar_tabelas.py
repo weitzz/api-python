@@ -1,4 +1,4 @@
-from core.config import setting
+from core.configs import setting
 from core.database import engine
 
 
