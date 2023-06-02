@@ -1,0 +1,1 @@
+from models.medicamento_model import MedicamentoModel
