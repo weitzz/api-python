@@ -8,5 +8,5 @@ class MedicamentoModel(settings.DBBaseModel):
     id = Column(Integer, primary_key=True, autoincrement=True)
     nome = Column(String(256))
     preco = Column(Float)
-    data_de_validade = Column(Date)
+    data_de_validade = Column(String(256))
     imagem = Column(String)

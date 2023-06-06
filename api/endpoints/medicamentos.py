@@ -82,7 +82,7 @@ async def delete_medicamento(medicamento_id: int, db: AsyncSession = Depends(get
             raise HTTPException(detail='Medicamento não encontrado.', status_code=status.HTTP_404_NOT_FOUND)
 
 
-@router.post('/medicamento/uploadImage', status_code=status.HTTP_201_CREATED, response_model=MedicamentoSchema)
+@router.post('/uploadImage', status_code=status.HTTP_201_CREATED, response_model=MedicamentoSchema)
 async def upload_image(medicamento:MedicamentoSchema, db: AsyncSession = Depends(get_session)):
 
     try:
@@ -93,7 +93,7 @@ async def upload_image(medicamento:MedicamentoSchema, db: AsyncSession = Depends
     except Exception as e:
         raise HTTPException( detail='Imagem do medicamento não encontrado.', status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-@router.post('/medicamento/getImage', response_model=MedicamentoSchema)
+@router.post('/getImage', response_model=MedicamentoSchema)
 async def get_image(file: UploadFile = File(...), db: AsyncSession = Depends(get_session)):
             try:
                 return {"message": "Passo 2 concluído com sucesso"}
