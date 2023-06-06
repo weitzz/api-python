@@ -1,16 +1,15 @@
-# This is a sample Python script.
+from fastapi import FastAPI
 
-# Press Shift+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
-
-
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press Ctrl+F8 to toggle the breakpoint.
+from core.configs import settings
+from api.api import api_router
 
 
-# Press the green button in the gutter to run the script.
+app = FastAPI(title='Pharma API')
+app.include_router(api_router, prefix=settings.API_STR)
+
+
 if __name__ == '__main__':
-    print_hi('PyCharm')
+    import uvicorn
 
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+    uvicorn.run("main:app", host="0.0.0.0", port=8000,
+                log_level='info', reload=True)

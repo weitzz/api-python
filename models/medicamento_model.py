@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Date
+from sqlalchemy import Column, Integer, String, Date, Float
 from core.configs import settings
 
 
@@ -7,6 +7,6 @@ class MedicamentoModel(settings.DBBaseModel):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     nome = Column(String(256))
-    preco = Column()
+    preco = Column(Float)
     data_de_validade = Column(Date)
     imagem = Column(String)
