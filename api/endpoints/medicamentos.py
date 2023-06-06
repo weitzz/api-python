@@ -35,10 +35,10 @@ async def get_medicamentos(db: AsyncSession = Depends(get_session)):
 
 @router.get('/{medicamento_id}', response_model=MedicamentoSchema, status_code=status.HTTP_200_OK)
 async def get_medicamento(medicamento_id: int, db: AsyncSession = Depends(get_session)):
-    async  with db as session:
+    async with db as session:
         query = select(MedicamentoModel).filter(MedicamentoModel.id == medicamento_id)
         result = await session.execute(query)
-        medicamento: result.scalar_one_or_none()
+        medicamento= result.scalar_one_or_none()
 
         if medicamento:
             return medicamento
@@ -51,7 +51,7 @@ async def put_medicamento(medicamento_id: int, medicamento: MedicamentoSchema, d
     async with db as session:
         query = select(MedicamentoModel).filter(MedicamentoModel.id == medicamento_id)
         result = await session.execute(query)
-        medicamento_up: result.scalar_one_or_none()
+        medicamento_up = result.scalar_one_or_none()
 
         if medicamento_up:
             medicamento_up.nome = medicamento.nome
@@ -71,7 +71,7 @@ async def delete_medicamento(medicamento_id: int, db: AsyncSession = Depends(get
     async with db as session:
         query = select(MedicamentoModel).filter(MedicamentoModel.id == medicamento_id)
         result = await session.execute(query)
-        medicamento_delete: result.scalar_one_or_none()
+        medicamento_delete= result.scalar_one_or_none()
 
         if medicamento_delete:
             await session.delete(medicamento_delete)
@@ -93,7 +93,7 @@ async def upload_image(medicamento:MedicamentoSchema, db: AsyncSession = Depends
     except Exception as e:
         raise HTTPException( detail='Imagem do medicamento não encontrado.', status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-@router.post('/getImage', response_model=MedicamentoSchema)
+@router.get('/getImage', response_model=MedicamentoSchema)
 async def get_image(file: UploadFile = File(...), db: AsyncSession = Depends(get_session)):
             try:
                 return {"message": "Passo 2 concluído com sucesso"}
