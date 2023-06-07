@@ -28,7 +28,7 @@ async def get_medicamentos(db: AsyncSession = Depends(get_session)):
     async  with db as session:
         query = select(MedicamentoModel)
         result = await  session.execute(query)
-        medicamentos = List[MedicamentoModel] = result.scalars().all()
+        medicamentos: List[MedicamentoModel] = result.scalars().all()
 
         return medicamentos
 
@@ -53,7 +53,7 @@ async def get_medicamentos(nome: Optional[str] = None, db: AsyncSession = Depend
         if nome:
             query = query.filter(MedicamentoModel.nome.ilike(f'%{nome}%'))
         result = await session.execute(query)
-        medicamentos = List[MedicamentoModel] = result.scalars().all()
+        medicamentos: List[MedicamentoModel] = result.scalars().all()
 
         return medicamentos
 
