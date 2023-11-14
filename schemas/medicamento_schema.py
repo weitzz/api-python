@@ -1,8 +1,6 @@
-
 from typing import Optional
-from pydantic import BaseModel as SCBaseModel
-from pydantic.datetime_parse import datetime
 
+from pydantic import BaseModel as SCBaseModel
 
 
 class MedicamentoSchema(SCBaseModel):
@@ -11,6 +9,9 @@ class MedicamentoSchema(SCBaseModel):
     preco: float
     data_de_validade: str
     imagem: str
+    estoque: Optional[bool]
+    quantidade: Optional[str]
 
     class Config:
         orm_mode = True
+

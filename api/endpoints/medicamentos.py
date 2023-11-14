@@ -1,120 +1,97 @@
 import os
+import pathlib
 import shutil
 import uuid
 from pathlib import Path
-from typing import List, Optional
-from fastapi import APIRouter, status, Depends, HTTPException, Response, UploadFile, File, FastAPI
+from typing import List, Optional, Annotated
+from fastapi import APIRouter, status, Depends, HTTPException, Response, UploadFile, File, Form
+
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from fastapi.responses import FileResponse
-from fastapi.middleware.cors import CORSMiddleware
-
+from PIL import Image
 from models.medicamento_model import MedicamentoModel
 from schemas.medicamento_schema import MedicamentoSchema
 from core.deps import get_session
+from fastapi.staticfiles import StaticFiles
 
 IMAGEDIR = "images/"
-
-#
-# app = FastAPI()
-#
-#
-# origins = [
-#     "http://localhost",
-#     "http://localhost:3000",
-#     "http://localhost:3000/medicamentos",
-#     "https://localhost:3000/medicamentos",
-#     "http://localhost:3000/",
-#     "https://localhost:3000"
-#
-# ]
-#
-# app.add_middleware(
-#     CORSMiddleware,
-#     allow_origins=origins,
-#     allow_credentials=True,
-#     allow_methods=["GET", "POST", "PUT", "DELETE"],
-#     allow_headers=["*"],
-# )
+uploads_dir = pathlib.Path(os.getcwd(), IMAGEDIR)
 
 router = APIRouter()
+router.mount("/images", StaticFiles(directory="images"), name="images")
 
-# @router.post('/img', status_code=status.HTTP_201_CREATED)
-# async def post_image(medicamento: MedicamentoSchema, file: UploadFile = File(...)):
-#     file.filename = f"{medicamento.nome}.jpg"
-#     contents = await file.read()
-#     # save the file
-#     with open(f"{IMAGEDIR}{file.filename}", "wb") as f:
-#         f.write(contents)
-#
-#     return {"filename": file.filename}
-#
-#
-# @router.get("/show")
-# async def read_random_file():
-#     # get random file from the image directory
-#     files = os.listdir(IMAGEDIR)
-#     random_index = randint(0, len(files) - 1)
-#
-#     path = f"{IMAGEDIR}{files[random_index]}"
-#
-#     return FileResponse(path)
 
+def save_image(contents, file_path):
+    with open(file_path, "wb") as f:
+        f.write(contents)
 
 @router.post('/', status_code=status.HTTP_201_CREATED, response_model=MedicamentoSchema)
-async def post_medicamento(nome: str,
-    preco: float,
-    data_de_validade: str,
-    imagem: UploadFile = File(...), db: AsyncSession = Depends(get_session)):
-    # criar img
-    imagem.filename = f"{nome}.jpg"
-    contents = await imagem.read()
+async def post_medicamento(nome: str = Form(),
+                           preco: float = Form(),
+                           data_de_validade: str = Form(),
+                           estoque: bool = Form(),
+                           quantidade: str = Form(),
+                           imagem: UploadFile = File(...), db: AsyncSession = Depends(get_session)):
+    try:
+        extensao = os.path.splitext(imagem.filename)[1].lower()
+        allowed_extensions = {'.png', '.jpg', '.jpeg', '.gif'}
 
-    # salvar
-    with open(f"{IMAGEDIR}{imagem.filename}", "wb") as f:
-        f.write(contents)
-        image_url = f"http://localhost:8000/api/medicamentos/images/{imagem.filename}"
+        if extensao not in allowed_extensions:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Extensão de imagem não suportada")
 
-    novo_medicamento = MedicamentoModel(
-        nome=nome,
-        preco=preco,
-        data_de_validade=data_de_validade,
-        imagem=image_url)
+        arquivo_imagem = f"{nome}{extensao}"
+        contents = await imagem.read()
 
-    db.add(novo_medicamento)
-    await db.commit()
-    return novo_medicamento
+        # Salvar a imagem no caminho correto
+        image_path = os.path.join(IMAGEDIR, arquivo_imagem)
+        save_image(contents, image_path)
+
+        # Verificar e converter para JPEG, se necessário
+        # image_path = convert_to_jpeg(image_path)
+
+        image_url = f"http://localhost:8000/api/medicamentos/images/{os.path.basename(image_path)}"
+
+        novo_medicamento = MedicamentoModel(
+            nome=nome,
+            preco=preco,
+            data_de_validade=data_de_validade,
+            estoque=estoque,
+            quantidade=quantidade,
+            imagem=image_url
+        )
+
+        db.add(novo_medicamento)
+        await db.commit()
+        return novo_medicamento
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail=f"Erro ao processar a solicitação: {str(e)}")
 
 
 @router.get('/', response_model=List[MedicamentoSchema])
-async def get_medicamentos(db: AsyncSession = Depends(get_session)):
+async def get_medicamentos(nome: Optional[str] = None, db: AsyncSession = Depends(get_session)):
     async with db as session:
         query = select(MedicamentoModel)
-        result = await  session.execute(query)
+        if nome:
+            query = query.filter(MedicamentoModel.nome.ilike(f'%{nome}%'))
+        result = await session.execute(query)
         medicamentos: List[MedicamentoModel] = result.scalars().all()
 
         return medicamentos
 
 
-
-# @router.get('/', response_model=List[MedicamentoSchema])
-# async def get_medicamentos(nome: Optional[str] = None, db: AsyncSession = Depends(get_session)):
-#     async with db as session:
-#         query = select(MedicamentoModel)
-#         if nome:
-#             query = query.filter(MedicamentoModel.nome.ilike(f'%{nome}%'))
-#         result = await session.execute(query)
-#         medicamentos: List[MedicamentoModel] = result.scalars().all()
-#
-#         return medicamentos
-
-
-
 @router.get("/images/{image_filename}")
 async def get_image(image_filename: str):
     image_path = os.path.join(IMAGEDIR, image_filename)
-    return FileResponse(image_path)
+    if not os.path.isfile(image_path):
+        raise HTTPException(status_code=404, detail="Imagem não encontrada")
 
+    name, ext = os.path.splitext(image_filename)
+
+    image_path_without_extension = os.path.join(IMAGEDIR, name + ext)
+
+    return FileResponse(image_path_without_extension)
 
 
 @router.get('/{medicamento_id}', response_model=MedicamentoSchema, status_code=status.HTTP_200_OK)
@@ -128,15 +105,6 @@ async def get_medicamento(medicamento_id: int, db: AsyncSession = Depends(get_se
             return medicamento
         else:
             raise HTTPException(detail='Medicamento não encontrado.', status_code=status.HTTP_404_NOT_FOUND)
-
-
-
-
-
-
-
-
-
 
 
 @router.put('/{medicamento_id}', response_model=MedicamentoSchema, status_code=status.HTTP_202_ACCEPTED)
@@ -157,10 +125,6 @@ async def put_medicamento(medicamento_id: int, medicamento: MedicamentoSchema, d
             return medicamento_up
         else:
             raise HTTPException(detail='Medicamento não encontrado.', status_code=status.HTTP_404_NOT_FOUND)
-
-
-
-
 
 
 @router.delete('/{medicamento_id}', status_code=status.HTTP_204_NO_CONTENT)

@@ -12,6 +12,8 @@ origins = [
     "http://localhost:3000",
     "http://localhost:3000/medicamentos",
     "https://localhost:3000/medicamentos",
+    "https://localhost:3000/medicamentos/",
+    "http://localhost:3000/cadastrar"
     "http://localhost:3000/",
     "https://localhost:3000"
 
