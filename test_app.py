@@ -1,5 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import true
+
 from main import app
 
 client = TestClient(app)
@@ -10,10 +12,18 @@ def test_post_medicamento():
         "nome": "cetoprofeno",
         "preco": 25.99,
         "data_de_validade": "10-05-2040",
-        "imagem": "nova_imagem.jpg"
+        "estoque": True,
+        "quantidade": "500"
     }
+    files = {'imagem': ('test_image.jpg', open('medicamentos/images/test_image.jpg', 'rb'), 'image/jpeg')}
 
-    response = client.post("/api/medicamentos", json=medicamento_data)
+
+
+
+
+
+
+    response = client.post("/api/medicamentos", data=medicamento_data, files=files)
 
     assert response.status_code == 201
     assert response.json()["nome"] == medicamento_data["nome"]
@@ -39,7 +49,7 @@ def test_put_medicamento():
         "nome": "novo_nome",
         "preco": 30.99,
         "data_de_validade": "2023-08-20",
-        "imagem": "nova_imagem3.jpg"
+        "imagem": "nova_imagem3.png"
     }
 
     response = client.put(f"/api/medicamentos/{medicamento_id}", json=medicamento_data)
