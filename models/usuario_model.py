@@ -10,4 +10,5 @@ class UsuarioModel(settings.DBBaseModel):
     nome = Column(String(256), nullable=True)
     email = Column(String(256), nullable=False, index=True, unique=True)
     password = Column(String(256), nullable=False)
+    refresh_token = Column(String(256), nullable=True)
 
