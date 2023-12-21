@@ -9,6 +9,7 @@ async def create_tables() -> None:
     async with engine.begin() as conn:
         # await conn.run_sync(settings.DBBaseModel.metadata.drop_all)
         await conn.run_sync(settings.DBBaseModel.metadata.create_all)
+
     print('Tabelas criadas com sucesso.')
 
 

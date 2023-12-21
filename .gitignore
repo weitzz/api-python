@@ -5,3 +5,8 @@ env/
 .env.local
 
 /images
+
+
+*.env
+*.env.*
+env.*
