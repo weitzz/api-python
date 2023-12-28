@@ -13,13 +13,13 @@
 - Crie e ative um ambiente virtual (opcional): python3 -m venv env && source env/bin/activate
 - Instale as dependências: pip install -r requirements.txt
 
-### Configuração 
+### ⚙️ Configuração 
 * Crie um banco de dados no PostgreSQL.
 * Configure as informações de conexão com o banco de dados no arquivo config.py.
 * Execute as migrações do banco de dados: python criar_tabelas.py.
 
 
-##Uso
+### 🖱️ Uso
 * Inicie o servidor da API: python main.py.
 * Acesse a API em http://localhost:8000.
 
