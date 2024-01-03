@@ -7,15 +7,15 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-
+from datetime import datetime
 from core.deps import get_session
 from models.medicamento_model import MedicamentoModel
 from schemas.medicamento_schema import MedicamentoSchema
-
+router = APIRouter()
 IMAGEDIR = "images/"
 uploads_dir = pathlib.Path(os.getcwd(), IMAGEDIR)
 
-router = APIRouter()
+
 router.mount("/images", StaticFiles(directory="images"), name="images")
 
 
@@ -31,6 +31,9 @@ async def post_medicamento(nome: str = Form(),
                            estoque: bool = Form(),
                            quantidade: str = Form(),
                            imagem: UploadFile = File(...), db: AsyncSession = Depends(get_session)):
+
+
+
     try:
         extensao = os.path.splitext(imagem.filename)[1].lower()
         allowed_extensions = {'.png', '.jpg', '.jpeg', '.gif'}
@@ -45,10 +48,11 @@ async def post_medicamento(nome: str = Form(),
         image_path = os.path.join(IMAGEDIR, arquivo_imagem)
         save_image(contents, image_path)
 
-        # Verificar e converter para JPEG, se necessário
-        # image_path = convert_to_jpeg(image_path)
 
         image_url = f"http://localhost:8000/api/medicamentos/images/{os.path.basename(image_path)}"
+
+        # data_formatada = datetime.strptime(data_de_validade, "%d/%m/%Y")
+        # print(data_formatada)
 
         novo_medicamento = MedicamentoModel(
             nome=nome,
