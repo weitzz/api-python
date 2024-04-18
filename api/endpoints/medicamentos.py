@@ -11,10 +11,10 @@ from datetime import datetime
 from core.deps import get_session
 from models.medicamento_model import MedicamentoModel
 from schemas.medicamento_schema import MedicamentoSchema
+
 router = APIRouter()
 IMAGEDIR = "images/"
 uploads_dir = pathlib.Path(os.getcwd(), IMAGEDIR)
-
 
 router.mount("/images", StaticFiles(directory="images"), name="images")
 
@@ -31,9 +31,6 @@ async def post_medicamento(nome: str = Form(),
                            estoque: bool = Form(),
                            quantidade: str = Form(),
                            imagem: UploadFile = File(...), db: AsyncSession = Depends(get_session)):
-
-
-
     try:
         extensao = os.path.splitext(imagem.filename)[1].lower()
         allowed_extensions = {'.png', '.jpg', '.jpeg', '.gif'}
@@ -48,11 +45,7 @@ async def post_medicamento(nome: str = Form(),
         image_path = os.path.join(IMAGEDIR, arquivo_imagem)
         save_image(contents, image_path)
 
-
         image_url = f"http://localhost:8000/api/medicamentos/images/{os.path.basename(image_path)}"
-
-        # data_formatada = datetime.strptime(data_de_validade, "%d/%m/%Y")
-        # print(data_formatada)
 
         novo_medicamento = MedicamentoModel(
             nome=nome,
@@ -107,39 +100,79 @@ async def get_medicamento(medicamento_id: int, db: AsyncSession = Depends(get_se
             raise HTTPException(detail='Medicamento não encontrado.', status_code=status.HTTP_404_NOT_FOUND)
 
 
-# @router.get('/{medicamento_nome}', response_model=MedicamentoSchema, status_code=status.HTTP_200_OK)
-# async def get_medicamento(medicamento_nome: str, db: AsyncSession = Depends(get_session)):
-#     async with db as session:
-#         query = select(MedicamentoModel).filter(MedicamentoModel.nome == medicamento_nome)
-#         result = await session.execute(query)
-#         medicamento = result.scalar_one_or_none()
-#
-#         if medicamento:
-#             return medicamento
-#         else:
-#             raise HTTPException(detail='Medicamento não encontrado.', status_code=status.HTTP_404_NOT_FOUND)
-
-
-@router.put('/{medicamento_id}', response_model=MedicamentoSchema, status_code=status.HTTP_202_ACCEPTED)
-async def put_medicamento(medicamento_id: int, medicamento: MedicamentoSchema, db: AsyncSession = Depends(get_session)):
+@router.get('/{name}', response_model=MedicamentoSchema, status_code=status.HTTP_200_OK)
+async def get_name_medicamento(name: str, db: AsyncSession = Depends(get_session)):
     async with db as session:
-        query = select(MedicamentoModel).filter(MedicamentoModel.id == medicamento_id)
+        query = select(MedicamentoModel).filter(MedicamentoModel.nome == name)
         result = await session.execute(query)
-        medicamento_up = result.scalar_one_or_none()
+        medicamento = result.scalar_one_or_none()
 
-        if medicamento_up:
-            medicamento_up.nome = medicamento.nome
-            medicamento_up.preco = medicamento.preco
-            medicamento_up.data_de_validade = medicamento.data_de_validade
-            medicamento_up.imagem = medicamento.imagem
-            medicamento_up.estoque = medicamento.estoque
-            medicamento_up.quantidade = medicamento.quantidade
+        if medicamento:
+            return medicamento
+        else:
+            raise HTTPException(detail='Medicamento não encontrado.', status_code=status.HTTP_404_NOT_FOUND)
+
+
+@router.put('/{medicamento_id}', response_model=MedicamentoSchema)
+async def put_medicamento(
+        medicamento_id: int,
+        nome: str = Form(...),
+        preco: float = Form(...),
+        data_de_validade: str = Form(...),
+        estoque: bool = Form(...),
+        quantidade: str = Form(...),
+        imagem: UploadFile = File(...),
+        db: AsyncSession = Depends(get_session)
+):
+    try:
+        async with db as session:
+            # Verifica se o medicamento existe no banco de dados
+            query = select(MedicamentoModel).filter(MedicamentoModel.id == medicamento_id)
+            medicamento_existente = await session.execute(query)
+            medicamento_existente = medicamento_existente.scalar_one_or_none()
+
+            if not medicamento_existente:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Medicamento não encontrado"
+                )
+
+            # Atualiza os campos do medicamento com os valores fornecidos
+            medicamento_existente.nome = nome
+            medicamento_existente.preco = preco
+            medicamento_existente.data_de_validade = data_de_validade
+            medicamento_existente.estoque = estoque
+            medicamento_existente.quantidade = quantidade
+
+            # Salva a nova imagem (caso seja fornecida)
+            if imagem:
+                extensao = os.path.splitext(imagem.filename)[1].lower()
+                allowed_extensions = {'.png', '.jpg', '.jpeg', '.gif'}
+
+                if extensao not in allowed_extensions:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Extensão de imagem não suportada"
+                    )
+
+                arquivo_imagem = f"{nome}{extensao}"
+                contents = await imagem.read()
+
+                # Salvar a imagem no caminho correto
+                image_path = os.path.join(IMAGEDIR, arquivo_imagem)
+                save_image(contents, image_path)
+
+                medicamento_existente.imagem = f"http://localhost:8000/api/medicamentos/images/{os.path.basename(image_path)}"
 
             await session.commit()
 
-            return medicamento_up
-        else:
-            raise HTTPException(detail='Medicamento não encontrado.', status_code=status.HTTP_404_NOT_FOUND)
+            return medicamento_existente
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao processar a solicitação: {str(e)}"
+        )
 
 
 @router.delete('/{medicamento_id}', status_code=status.HTTP_204_NO_CONTENT)
