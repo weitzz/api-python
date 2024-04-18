@@ -4,7 +4,7 @@ from sqlalchemy.orm import declarative_base
 
 class Settings(BaseSettings):
     API_STR: str = '/api'
-    DB_URL: str = 'postgresql+asyncpg://postgres:admin@localhost:5432/pharmadb'
+    DB_URL: str = 'postgresql+asyncpg://postgres:admin@pharmadb:5432/pharmadb'
     DBBaseModel = declarative_base()
     JWT_SECRET: str = 'aouPY_Uv2j3HmXAKZTG_9MComFqhZqKRMKRKie458y8'
 
