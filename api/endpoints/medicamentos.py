@@ -1,20 +1,23 @@
 import os
 import pathlib
+from PIL import Image
+from io import BytesIO
 from typing import List, Optional
+from fastapi_pagination import Page, add_pagination, paginate
 
 from fastapi import APIRouter, status, Depends, HTTPException, Response, UploadFile, File, Form
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from datetime import datetime
+from datetime import date
 from core.deps import get_session
 from models.medicamento_model import MedicamentoModel
-from schemas.medicamento_schema import MedicamentoSchema
+from schemas.medicamento_schema import MedicamentoSchema, MedicamentoUpdateSchema
 
-router = APIRouter()
 IMAGEDIR = "images/"
 uploads_dir = pathlib.Path(os.getcwd(), IMAGEDIR)
+router = APIRouter()
 
 router.mount("/images", StaticFiles(directory="images"), name="images")
 
@@ -24,19 +27,52 @@ def save_image(contents, file_path):
         f.write(contents)
 
 
+@router.post('/upload', status_code=status.HTTP_201_CREATED, response_model=MedicamentoSchema)
+async def post_image(nome, image: UploadFile = File(...)):
+
+    try:
+        extensao = os.path.splitext(image.filename)[1].lower()
+        contents = await image.read()
+
+        img = Image.open(image.filename)
+
+        # buf = BytesIO()
+
+        # img.save(buf, "jpeg")
+
+        # buf.seek(0)
+
+        # image_bytes = buf.read()
+
+        # buf.close
+
+        with BytesIO() as buf:
+            img.save(buf, 'jpeg')
+            image_bytes = buf.getvalue()
+
+        arquivo_imagem = f"{nome}{extensao}"
+        image_path = os.path.join(IMAGEDIR, arquivo_imagem)
+
+        return {"detalhes": f"bytes da imagem: {image_bytes}"}
+
+    except Exception as error:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail=f"Erro ao processar a solicitação: {str(error)}")
+
+
 @router.post('/', status_code=status.HTTP_201_CREATED, response_model=MedicamentoSchema)
 async def post_medicamento(nome: str = Form(),
                            preco: float = Form(),
                            data_de_validade: str = Form(),
-                           estoque: bool = Form(),
-                           quantidade: str = Form(),
+                           quantidade: float = Form(),
                            imagem: UploadFile = File(...), db: AsyncSession = Depends(get_session)):
     try:
         extensao = os.path.splitext(imagem.filename)[1].lower()
         allowed_extensions = {'.png', '.jpg', '.jpeg', '.gif'}
 
         if extensao not in allowed_extensions:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Extensão de imagem não suportada")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                                detail="Extensão de imagem não suportada")
 
         arquivo_imagem = f"{nome}{extensao}"
         contents = await imagem.read()
@@ -44,6 +80,7 @@ async def post_medicamento(nome: str = Form(),
         # Salvar a imagem no caminho correto
         image_path = os.path.join(IMAGEDIR, arquivo_imagem)
         save_image(contents, image_path)
+        # Salvar a imagem no caminho correto
 
         image_url = f"http://localhost:8000/api/medicamentos/images/{os.path.basename(image_path)}"
 
@@ -51,7 +88,6 @@ async def post_medicamento(nome: str = Form(),
             nome=nome,
             preco=preco,
             data_de_validade=data_de_validade,
-            estoque=estoque,
             quantidade=quantidade,
             imagem=image_url
         )
@@ -90,14 +126,16 @@ async def get_image(image_filename: str):
 @router.get('/{medicamento_id}', response_model=MedicamentoSchema, status_code=status.HTTP_200_OK)
 async def get_medicamento(medicamento_id: int, db: AsyncSession = Depends(get_session)):
     async with db as session:
-        query = select(MedicamentoModel).filter(MedicamentoModel.id == medicamento_id)
+        query = select(MedicamentoModel).filter(
+            MedicamentoModel.id == medicamento_id)
         result = await session.execute(query)
         medicamento = result.scalar_one_or_none()
 
         if medicamento:
             return medicamento
         else:
-            raise HTTPException(detail='Medicamento não encontrado.', status_code=status.HTTP_404_NOT_FOUND)
+            raise HTTPException(
+                detail='Medicamento não encontrado.', status_code=status.HTTP_404_NOT_FOUND)
 
 
 @router.get('/{name}', response_model=MedicamentoSchema, status_code=status.HTTP_200_OK)
@@ -110,24 +148,25 @@ async def get_name_medicamento(name: str, db: AsyncSession = Depends(get_session
         if medicamento:
             return medicamento
         else:
-            raise HTTPException(detail='Medicamento não encontrado.', status_code=status.HTTP_404_NOT_FOUND)
+            raise HTTPException(
+                detail='Medicamento não encontrado.', status_code=status.HTTP_404_NOT_FOUND)
 
 
-@router.put('/{medicamento_id}', response_model=MedicamentoSchema)
+@router.put('/{medicamento_id}', response_model=MedicamentoUpdateSchema)
 async def put_medicamento(
         medicamento_id: int,
-        nome: str = Form(...),
-        preco: float = Form(...),
-        data_de_validade: str = Form(...),
-        estoque: bool = Form(...),
-        quantidade: str = Form(...),
+        nome: str = Form(),
+        preco: float = Form(),
+        data_de_validade: str = Form(),
+        quantidade: float = Form(),
         imagem: UploadFile = File(...),
         db: AsyncSession = Depends(get_session)
 ):
     try:
         async with db as session:
             # Verifica se o medicamento existe no banco de dados
-            query = select(MedicamentoModel).filter(MedicamentoModel.id == medicamento_id)
+            query = select(MedicamentoModel).filter(
+                MedicamentoModel.id == medicamento_id)
             medicamento_existente = await session.execute(query)
             medicamento_existente = medicamento_existente.scalar_one_or_none()
 
@@ -141,7 +180,6 @@ async def put_medicamento(
             medicamento_existente.nome = nome
             medicamento_existente.preco = preco
             medicamento_existente.data_de_validade = data_de_validade
-            medicamento_existente.estoque = estoque
             medicamento_existente.quantidade = quantidade
 
             # Salva a nova imagem (caso seja fornecida)
@@ -178,7 +216,8 @@ async def put_medicamento(
 @router.delete('/{medicamento_id}', status_code=status.HTTP_204_NO_CONTENT)
 async def delete_medicamento(medicamento_id: int, db: AsyncSession = Depends(get_session)):
     async with db as session:
-        query = select(MedicamentoModel).filter(MedicamentoModel.id == medicamento_id)
+        query = select(MedicamentoModel).filter(
+            MedicamentoModel.id == medicamento_id)
         result = await session.execute(query)
         medicamento_delete = result.scalar_one_or_none()
 
@@ -188,4 +227,18 @@ async def delete_medicamento(medicamento_id: int, db: AsyncSession = Depends(get
 
             return Response(status_code=status.HTTP_204_NO_CONTENT)
         else:
-            raise HTTPException(detail='Medicamento não encontrado.', status_code=status.HTTP_404_NOT_FOUND)
+            raise HTTPException(
+                detail='Medicamento não encontrado.', status_code=status.HTTP_404_NOT_FOUND)
+
+
+@router.get('/paginate/default', response_model=Page[MedicamentoSchema])
+async def pagination_medicamentos(db: AsyncSession = Depends(get_session)):
+    async with db as session:
+        query = select(MedicamentoModel)
+        result = await session.execute(query)
+        medicamentos: List[MedicamentoModel] = result.scalars().all()
+
+        return paginate(medicamentos)
+
+
+add_pagination(router)
