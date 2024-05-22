@@ -1,6 +1,6 @@
 import pathlib
 
-from aiofiles import os
+import os
 from fastapi import APIRouter
 from starlette.staticfiles import StaticFiles
 
