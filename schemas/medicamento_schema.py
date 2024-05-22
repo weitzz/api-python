@@ -17,7 +17,6 @@ class MedicamentoSchema(SCBaseModel):
 
 
 class MedicamentoUpdateSchema(MedicamentoSchema):
-    id: Optional[int]
     nome: Optional[str]
     preco: Optional[float]
     data_de_validade: Optional[str]

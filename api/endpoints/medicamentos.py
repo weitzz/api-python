@@ -10,7 +10,6 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from datetime import date
 from core.deps import get_session
 from models.medicamento_model import MedicamentoModel
 from schemas.medicamento_schema import MedicamentoSchema, MedicamentoUpdateSchema
@@ -25,39 +24,6 @@ router.mount("/images", StaticFiles(directory="images"), name="images")
 def save_image(contents, file_path):
     with open(file_path, "wb") as f:
         f.write(contents)
-
-
-@router.post('/upload', status_code=status.HTTP_201_CREATED, response_model=MedicamentoSchema)
-async def post_image(nome, image: UploadFile = File(...)):
-
-    try:
-        extensao = os.path.splitext(image.filename)[1].lower()
-        contents = await image.read()
-
-        img = Image.open(image.filename)
-
-        # buf = BytesIO()
-
-        # img.save(buf, "jpeg")
-
-        # buf.seek(0)
-
-        # image_bytes = buf.read()
-
-        # buf.close
-
-        with BytesIO() as buf:
-            img.save(buf, 'jpeg')
-            image_bytes = buf.getvalue()
-
-        arquivo_imagem = f"{nome}{extensao}"
-        image_path = os.path.join(IMAGEDIR, arquivo_imagem)
-
-        return {"detalhes": f"bytes da imagem: {image_bytes}"}
-
-    except Exception as error:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                            detail=f"Erro ao processar a solicitação: {str(error)}")
 
 
 @router.post('/', status_code=status.HTTP_201_CREATED, response_model=MedicamentoSchema)
